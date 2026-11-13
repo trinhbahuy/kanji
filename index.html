@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="vi">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <meta name="theme-color" content="#f5f4ed" />
+        <title>Kotoba · Mỗi ngày một chút Kanji</title>
+        <link rel="stylesheet" href="./assets/css/style.css" />
+        <script
+            defer
+            src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.4/dist/htmx.min.js"
+        ></script>
+        <script defer src="./assets/js/config.js"></script>
+        <script defer src="./assets/js/auth.js"></script>
+        <script defer src="./assets/js/demo.js"></script>
+        <script defer src="./assets/js/app.js"></script>
+    </head>
+    <body>
+        <header>
+            <a class="brand" href="./"
+                ><span class="mark">こ</span> kotoba<span class="brand-dot"
+                    >.</span
+                ></a
+            ><button id="logout" class="text-button" hidden>Đăng xuất ↗</button>
+        </header>
+        <main>
+            <div class="eyebrow">MỖI NGÀY, MỘT CHÚT TIẾN BỘ</div>
+            <h1>Nhìn chữ. Nhớ cách đọc.</h1>
+            <p class="intro">
+                Một từ Kanji, ba lần thử. Học theo nhịp của bạn.
+            </p>
+            <section id="login-panel" class="card login-card">
+                <div class="card-top">
+                    <span>BẮT ĐẦU THÓI QUEN NHỎ</span><span>始</span>
+                </div>
+                <h2>Chào bạn trở lại.</h2>
+                <p class="muted">Đăng nhập để bắt đầu luyện Kanji.</p>
+                <form id="login-form">
+                    <label for="username">Tên đăng nhập</label
+                    ><input
+                        id="username"
+                        name="username"
+                        autocomplete="username"
+                        autocapitalize="none"
+                        spellcheck="false"
+                        pattern="[A-Za-z0-9_]{3,32}"
+                        placeholder="Tên đăng nhập của bạn"
+                        required
+                    />
+                    <label for="password">Mật khẩu</label
+                    ><input
+                        id="password"
+                        name="password"
+                        type="password"
+                        autocomplete="current-password"
+                        placeholder="Nhập mật khẩu"
+                        required
+                    />
+                    <p id="login-message" role="status" class="message"></p>
+                    <button class="primary" type="submit">
+                        Vào học <span>→</span>
+                    </button>
+                </form>
+            </section>
+            <section id="study-panel" hidden>
+                <div class="session-bar">
+                    <span><i></i> GÓC LUYỆN TẬP</span
+                    ><span>Minna · N5 + N4</span>
+                </div>
+                <div id="round" class="card" aria-live="polite">
+                    <div class="empty">
+                        <span class="empty-kanji">学</span>
+                        <h2>Sẵn sàng học một từ mới?</h2>
+                        <p class="muted">Bấm “Từ ngẫu nhiên” để bắt đầu.</p>
+                    </div>
+                </div>
+                <button
+                    id="random"
+                    class="primary random"
+                    hx-target="#round"
+                    hx-swap="innerHTML"
+                    hx-sync="#study-panel:drop"
+                    hx-disabled-elt="#study-panel button"
+                >
+                    <span>⤨ &nbsp; Từ ngẫu nhiên</span><span>→</span>
+                </button>
+                <p id="network-message" role="status" class="message"></p>
+                <p class="hint">Không cần vội. Thử nhớ trước khi xem đáp án.</p>
+            </section>
+            <aside class="how">
+                <span>01 <b>Nhìn Kanji</b></span
+                ><span>02 <b>Nhập Hiragana</b></span
+                ><span>03 <b>Ghi nhớ</b></span>
+            </aside>
+            <p id="demo-notice" class="demo-notice" hidden>
+                Bản trải nghiệm · dữ liệu mẫu, không lưu kết quả.
+            </p>
+        </main>
+        <footer>
+            <span>KOTOBA / ことば</span><span>Ít một, nhớ lâu.</span>
+        </footer>
+    </body>
+</html>
