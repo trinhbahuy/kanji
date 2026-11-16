@@ -1,37 +1,142 @@
 const cfg = window.APP_CONFIG;
 const $ = id => document.getElementById(id);
-function showStudy(on) { $('login-panel').hidden=on; $('study-panel').hidden=!on; $('logout').hidden=!on; }
-function clearRound() { $('round').innerHTML='<div class="empty"><span class="empty-kanji">学</span><h2>Sẵn sàng học một từ mới?</h2><p class="muted">Bấm “Từ ngẫu nhiên” để bắt đầu.</p></div>'; }
-if(cfg.demo) {
-  startDemo();
-} else if(!cfg.apiBaseUrl || !window.htmx) {
-  $('login-message').textContent='Chưa cấu hình API hoặc chưa tải được HTMX.';
-  $('login-form').addEventListener('submit',e=>e.preventDefault());
+const randomEndpoint = cfg.randomKanjiUrl;
+const checkEndpoint = cfg.checkReadingUrl;
+const randomButton = $('random');
+const typeFilter = $('type-filter');
+const roundElement = $('round');
+const messageElement = $('network-message');
+let roundState = null;
+let answerRequestPending = false;
+let avoidSampleKey = '';
+let repeatRetries = 0;
+
+function sampleKey(sample) {
+  return `${sample.kanji}\u0000${sample.read}`;
+}
+
+function setAnswerBusy(busy) {
+  answerRequestPending = busy;
+  randomButton.disabled = busy;
+  typeFilter.disabled = busy;
+  const submit = roundElement.querySelector('#answer-form button');
+  if (submit) submit.disabled = busy;
+}
+
+function clearRound() {
+  roundState = null;
+  avoidSampleKey = '';
+  repeatRetries = 0;
+  roundElement.innerHTML = '<div class="empty"><span class="empty-kanji">学</span><h2>Sẵn sàng học một từ mới?</h2><p class="muted">Bấm “Từ ngẫu nhiên” để bắt đầu.</p></div>';
+  messageElement.textContent = '';
+}
+
+function showRound() {
+  roundElement.innerHTML = Practice.renderRound(roundState);
+  $('reading')?.focus({ preventScroll: true });
+}
+
+async function checkAnswer(input) {
+  setAnswerBusy(true);
+  messageElement.textContent = '';
+  try {
+    const response = await fetch(checkEndpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: roundState.sample.type,
+        kanji: roundState.sample.kanji,
+        input,
+      }),
+      cache: 'no-store',
+      signal: AbortSignal.timeout(20000),
+    });
+    if (!response.ok) throw new Error('API kiểm tra chưa phản hồi thành công.');
+    const correct = Practice.parseCheckResponse(await response.text());
+    roundState = Practice.applyCheckResult(roundState, correct);
+    showRound();
+  } catch (error) {
+    messageElement.textContent = error.name === 'TimeoutError'
+      ? 'Kiểm tra đáp án quá thời gian. Vui lòng thử lại.'
+      : error.message || 'Chưa kiểm tra được đáp án. Vui lòng thử lại.';
+  } finally {
+    setAnswerBusy(false);
+  }
+}
+
+typeFilter.addEventListener('change', clearRound);
+
+roundElement.addEventListener('submit', event => {
+  if (event.target.id !== 'answer-form') return;
+  event.preventDefault();
+  if (answerRequestPending) return;
+  const input = $('reading').value;
+  if (!Practice.isValidReading(input)) {
+    roundState = Practice.validationError(roundState);
+    showRound();
+    return;
+  }
+  checkAnswer(input);
+});
+
+roundElement.addEventListener('click', event => {
+  const button = event.target.closest('button');
+  if (!button || answerRequestPending) return;
+  if (button.id === 'reveal-answer') {
+    roundState = Practice.revealAnswer(roundState);
+    showRound();
+  }
+  if (button.id === 'continue') {
+    avoidSampleKey = sampleKey(roundState.sample);
+    repeatRetries = 0;
+    messageElement.textContent = '';
+    randomButton.click();
+  }
+});
+
+if (!randomEndpoint || !checkEndpoint || !window.htmx) {
+  randomButton.disabled = true;
+  messageElement.textContent = 'Chưa cấu hình API hoặc chưa tải được HTMX.';
 } else {
-  const api=cfg.apiBaseUrl.replace(/\/$/,'')+'/practice';
-  htmx.config.selfRequestsOnly=false;
-  htmx.config.allowEval=false;
-  htmx.config.allowScriptTags=false;
-  htmx.config.historyCacheSize=0;
-  htmx.config.timeout=20000;
-  $('random').setAttribute('hx-post',api+'/random');htmx.process($('random'));
-  function expire() {AuthAPI.clear();clearRound();showStudy(false);$('login-message').textContent='Phiên đã hết hạn. Vui lòng đăng nhập lại.';}
-  document.body.addEventListener('htmx:validateUrl',e=>{if(![api+'/random',api+'/answer'].includes(e.detail.url.href))e.preventDefault();});
-  document.body.addEventListener('htmx:configRequest',e=>{e.detail.headers.Authorization='Bearer '+AuthAPI.token();});
-  document.body.addEventListener('htmx:beforeRequest',e=>{if(!AuthAPI.token()){e.preventDefault();expire();}$('network-message').textContent='';});
-  for(const event of ['htmx:responseError','htmx:sendError','htmx:timeout'])document.body.addEventListener(event,e=>{
-    if(e.detail.xhr?.status===401)expire();
-    else $('network-message').textContent='Chưa gửi được. Kiểm tra kết nối rồi thử lại.';
+  htmx.config.selfRequestsOnly = false;
+  htmx.config.allowEval = false;
+  htmx.config.allowScriptTags = false;
+  htmx.config.historyCacheSize = 0;
+  htmx.config.timeout = 20000;
+  randomButton.setAttribute('hx-get', randomEndpoint);
+  htmx.process(randomButton);
+
+  document.body.addEventListener('htmx:configRequest', event => {
+    if (event.detail.elt === randomButton) Practice.removeHtmxHeaders(event.detail.headers);
   });
-  document.body.addEventListener('htmx:afterSwap',()=>{$('reading')?.focus({preventScroll:true});});
-  $('login-form').addEventListener('submit',async e=>{
-    e.preventDefault();const button=e.submitter;button.disabled=true;$('login-message').textContent='';
-    try {await AuthAPI.login($('username').value.trim(),$('password').value);$('password').value='';clearRound();showStudy(true);}
-    catch(error){$('login-message').textContent=error.message;}
-    finally{button.disabled=false;}
+  document.body.addEventListener('htmx:validateUrl', event => {
+    const requested = new URL(event.detail.url.href);
+    const allowed = new URL(randomEndpoint);
+    if (requested.origin !== allowed.origin || requested.pathname !== allowed.pathname) event.preventDefault();
   });
-  $('logout').addEventListener('click',async()=>{
-    const pending=AuthAPI.logout();clearRound();showStudy(false);
-    try{await pending;}catch(error){$('login-message').textContent=error.message;}
+  document.body.addEventListener('htmx:beforeRequest', event => {
+    if (event.detail.elt === randomButton) messageElement.textContent = '';
   });
+  document.body.addEventListener('htmx:afterRequest', event => {
+    if (event.detail.elt !== randomButton || !event.detail.successful) return;
+    try {
+      const sample = Practice.parseRandomResponse(event.detail.xhr.responseText);
+      if (avoidSampleKey && sampleKey(sample) === avoidSampleKey && repeatRetries < 5) {
+        repeatRetries += 1;
+        setTimeout(() => randomButton.click(), 0);
+        return;
+      }
+      avoidSampleKey = '';
+      repeatRetries = 0;
+      roundState = Practice.startRound(sample, typeFilter.value);
+      showRound();
+    } catch (error) {
+      messageElement.textContent = error.message;
+    }
+  });
+  for (const eventName of ['htmx:responseError', 'htmx:sendError', 'htmx:timeout']) {
+    document.body.addEventListener(eventName, event => {
+      if (event.detail.elt === randomButton) messageElement.textContent = 'Chưa lấy được từ mới. Kiểm tra kết nối rồi thử lại.';
+    });
+  }
 }

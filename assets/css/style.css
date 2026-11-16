@@ -49,7 +49,8 @@ footer {
     font-size: 22px;
 }
 button,
-input {
+input,
+select {
     font: inherit;
 }
 button {
@@ -62,6 +63,7 @@ button:disabled {
     cursor: wait;
 }
 button:focus-visible,
+select:focus-visible,
 a:focus-visible {
     outline: 3px solid #c39c40;
     outline-offset: 4px;
@@ -210,6 +212,25 @@ input::placeholder {
     background: #6f8d57;
     margin-right: 5px;
 }
+.book-filter {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 16px;
+}
+.book-filter label { margin: 0; }
+.book-filter select {
+    flex: 1;
+    min-width: 0;
+    min-height: 48px;
+    padding: 10px 14px;
+    border: 1px solid var(--line);
+    border-radius: 11px;
+    background: #fff;
+    color: var(--ink);
+    font-size: 16px;
+}
+.book-filter select:disabled { opacity: 0.55; cursor: wait; }
 .round-top {
     display: flex;
     justify-content: space-between;
@@ -260,6 +281,12 @@ input::placeholder {
 }
 .answer-form .primary:hover {
     background: #dce6d2;
+}
+.round-actions {
+    padding: 0 24px 26px;
+}
+.round-actions .primary {
+    margin-top: 4px;
 }
 .feedback {
     padding: 17px 20px;

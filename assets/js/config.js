@@ -1,4 +1,4 @@
 window.APP_CONFIG = {
-  apiBaseUrl: '', // https://PROJECT.supabase.co/functions/v1
-  demo: true, // false khi deploy API thật
+  randomKanjiUrl: 'https://pwypdvswtzjqsqxkqizu.supabase.co/functions/v1/random-kanji',
+  checkReadingUrl: 'https://pwypdvswtzjqsqxkqizu.supabase.co/functions/v1/check-reading',
 };
